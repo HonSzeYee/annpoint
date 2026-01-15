@@ -7,7 +7,7 @@ import sys
 # 获取脚本所在目录的绝对路径，确保在任何地方运行都能找到文件
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCEL_FILE = os.path.join(BASE_DIR, '进度汇总.xlsx')
-HTML_FILE = os.path.join(BASE_DIR, 'dashboard.html')
+HTML_FILE = os.path.join(BASE_DIR, 'index.html')
 
 def update_dashboard():
     print("-" * 30)
@@ -64,7 +64,7 @@ def update_dashboard():
     # 检查是否找到标记
     if not re.search(pattern, html_content, re.DOTALL):
         print("❌ 错误：在 HTML 中找不到数据标记 (const rawData = `...`)")
-        print("请确认 dashboard.html 中包含 const rawData = `...`; 代码块")
+        print("请确认 index.html 中包含 const rawData = `...`; 代码块")
         return
 
     # 执行替换
