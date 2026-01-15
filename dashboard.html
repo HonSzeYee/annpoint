@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品经理 Demo 流程统计 Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-primary: #202123;
+            --text-secondary: #6e6e80;
+            --border-color: #e5e5e5;
+            --card-bg: #ffffff;
+            --accent-color: #10a37f;
+            --accent-hover: #1a7f64;
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Söhne', 'ui-sans-serif', 'system-ui', -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            background-color: #f7f7f8;
+            color: var(--text-primary);
+            padding: 40px 20px 60px 20px;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: transparent;
+            padding: 0;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+
+        /* KPI Cards - Small Tab Style */
+        .kpi-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 80px;
+            cursor: default;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-color: #d1d1d6;
+        }
+
+        .kpi-card:nth-child(n) {
+            background: var(--card-bg);
+        }
+
+        .kpi-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        /* Filters Area */
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            align-items: flex-end;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 36px 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: #ffffff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            height: 40px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.1);
+        }
+
+        .search-box::after {
+            content: '🔍';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            font-size: 14px;
+            opacity: 0.5;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-left: 2px;
+        }
+
+        select {
+            padding: 0 32px 0 12px;
+            height: 40px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-primary);
+            background-color: #fff;
+            cursor: pointer;
+            min-width: 140px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236e6e80'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, select:hover {
+            border-color: #8e8ea0;
+            outline: none;
+        }
+
+        .reset-btn {
+            height: 40px;
+            padding: 0 20px;
+            background: #ffffff;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #ececf1;
+            border-color: #d9d9e3;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .chart-container {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            min-height: 450px;
+        }
+
+        .chart-container canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .chart-container:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-color: #d1d1d6;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 0;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-tabs {
+            display: flex;
+            gap: 4px;
+            background: #f7f7f8;
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .chart-tab {
+            padding: 6px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .chart-tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .chart-tab.active {
+            background: white;
+            color: var(--accent-color);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-content-wrapper {
+            display: flex;
+            gap: 24px;
+            height: 480px;
+            flex: 1;
+        }
+
+        .chart-main {
+            flex: 2;
+            position: relative;
+            height: 100%;
+            padding: 10px;
+        }
+
+        .chart-canvas {
+            display: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
+        }
+
+        .chart-canvas.active {
+            display: block !important;
+        }
+
+        .chart-info-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 24px;
+            background: #f9f9fa;
+            border-radius: 8px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-item {
+            border-bottom: 1px solid #e5e5e5;
+            padding-bottom: 16px;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .info-insight {
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .custom-legend {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-label {
+            flex: 1;
+            color: var(--text-primary);
+        }
+
+        .legend-value {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+            font-size: 14px;
+        }
+
+        thead {
+            background: #f7f7f8;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #888;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: background-color 0.2s;
+        }
+
+        th:hover {
+            background: #ececf1;
+            color: var(--text-primary);
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f7f7f8;
+            color: #333;
+            transition: background-color 0.2s;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr {
+            transition: background-color 0.2s;
+        }
+
+        tbody tr:hover {
+            background-color: #f9f9fa;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0;
+            background: none;
+            color: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .status-badge::before {
+            content: '';
+            display: block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .status-已上线 {
+            color: #0e5a30;
+        }
+
+        .status-已上线::before {
+            background-color: #10a37f;
+        }
+
+        .status-测试中 {
+            color: #723b13;
+        }
+
+        .status-测试中::before {
+            background-color: #f5c042;
+        }
+
+        .status-开发中 {
+            color: #0e4e5e;
+        }
+
+        .status-开发中::before {
+            background-color: #5436da;
+        }
+
+        .status-提交开发分支至demo {
+            color: #444;
+        }
+
+        .status-提交开发分支至demo::before {
+            background-color: #9e9e9e;
+        }
+
+        .platform-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #ececf1;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* 发版日期筛选器样式 */
+        .release-date-filter {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .release-date-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .release-date-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .release-date-btn {
+            padding: 6px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: #ffffff;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .release-date-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background: rgba(16, 163, 127, 0.05);
+        }
+
+        .release-date-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .kpi-cards {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>产品经理 Demo 流程统计 Dashboard</h1>
+        <p class="subtitle">实时数据可视化与分析</p>
+
+        <!-- 发版日期筛选器 -->
+        <div class="release-date-filter">
+            <label class="release-date-label">▼ 发版日期:</label>
+            <div class="release-date-buttons" id="releaseDateButtons">
+                <button class="release-date-btn active" data-date="">全部</button>
+            </div>
+        </div>
+
+        <!-- KPI 卡片 -->
+        <div class="kpi-cards">
+            <div class="kpi-card">
+                <div class="kpi-label">总需求数</div>
+                <div class="kpi-value" id="totalReqs">30</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">已上线</div>
+                <div class="kpi-value" id="onlineReqs">25</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">上线率</div>
+                <div class="kpi-value" id="onlineRate">83%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">涉及后端</div>
+                <div class="kpi-value" id="backendReqs">5</div>
+            </div>
+        </div>
+
+        <!-- 筛选器 -->
+        <div class="filters">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索需求名称、负责人、备注等..." oninput="applySearch()">
+            </div>
+            <div class="filter-group">
+                <label>负责人:</label>
+                <select id="filterOwner">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>状态:</label>
+                <select id="filterStatus">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>平台:</label>
+                <select id="filterPlatform">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>技术类型:</label>
+                <select id="filterTech">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <button class="reset-btn" onclick="resetFilters()">重置筛选</button>
+        </div>
+
+        <!-- 图表区域 -->
+        <div class="charts-grid">
+            <!-- 统一图表容器（带 4 个 Tab） -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">数据统计</div>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" data-chart="status">状态分布</button>
+                        <button class="chart-tab" data-chart="platform">平台分布</button>
+                        <button class="chart-tab" data-chart="owner">负责人工作量</button>
+                        <button class="chart-tab" data-chart="tech">技术类型分布</button>
+                    </div>
+                </div>
+                <div class="chart-content-wrapper">
+                    <!-- 左侧图表区域 -->
+                    <div class="chart-main">
+                        <canvas id="statusChart" class="chart-canvas active"></canvas>
+                        <canvas id="platformChart" class="chart-canvas"></canvas>
+                        <canvas id="ownerChart" class="chart-canvas"></canvas>
+                        <canvas id="techChart" class="chart-canvas"></canvas>
+                    </div>
+                    
+                    <!-- 右侧信息面板 -->
+                    <div class="chart-info-panel" id="chartInfoPanel">
+                        <div class="info-section">
+                            <div class="info-item">
+                                <div class="info-label">总数</div>
+                                <div class="info-value" id="infoTotal">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">最高占比</div>
+                                <div class="info-value" id="infoTop">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">关键洞察</div>
+                                <div class="info-insight" id="infoInsight">-</div>
+                            </div>
+                        </div>
+                        <div class="custom-legend" id="customLegend"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="table-container">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">需求名称 ↕</th>
+                        <th onclick="sortTable(1)">负责人 ↕</th>
+                        <th onclick="sortTable(2)">发版日期 ↕</th>
+                        <th onclick="sortTable(3)">发版类型 ↕</th>
+                        <th onclick="sortTable(4)">平台 ↕</th>
+                        <th onclick="sortTable(5)">技术类型 ↕</th>
+                        <th onclick="sortTable(6)">当前状态 ↕</th>
+                        <th onclick="sortTable(7)">是否涉及后端 ↕</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 注册数据标签插件
+        Chart.register(ChartDataLabels);
+
+        // 原始数据
+        const rawData = `需求名称,负责人,发版日期,发版类型,平台,技术类型,当前状态,是否涉及后端,备注
+聊天室分组标签展示方式优化,思怡,2025/12/9,提前,聊天室,纯前端,已上线,否,
+优化指标选币的时间范围,思怡,2025-12-25,提前,PC,纯前端,已上线,否,
+优化指标选币结果不一致问题,思怡,2025-12-25,提前,PC,纯前端,已上线,否,
+回测AI分析结果不完整,思怡,2025-12-25,提前,PC,纯前端,已上线,否,
+优化平台交易对类型分类展示,思怡,2025-12-25,提前,PC,纯前端,已上线,否,提前完成但被pass
+3日涨幅榜筛选区间（iOS）,思怡,2026-01-15,正常,iOS,前端+后端协助+数据统计,已上线,是,
+3日涨幅榜筛选区间（Android）,思怡,2026-01-15,正常,Android,前端+后端协助+数据统计,已上线,是,
+3日涨幅榜筛选区间（PC）,思怡,2026-01-22,正常,PC,前端+后端协助+数据统计,已上线,是,
+群聊自动跳转优化,思怡,2026-01-22,正常,聊天室,纯前端,已上线,否,
+聊天室右键粘帖功能,思怡,2026-01-22,正常,PC,纯前端,已上线,否,
+筛选器涨跌幅条件,思怡,2026-01-22,正常,PC,前端+后端,开发中,是,
+聊天室群组添加好友,思怡,2026-01-22,正常,PC,纯前端,开发中,否,
+快讯历史脉络 Demo,思怡,2026-01-22,正常,PC,纯前端,已上线,否,自己的idea->实现
+大促页面移动端适配,文轩,2026-01-04,正常,Web,纯前端,已上线,否,
+Ace智搜优化,文轩,2025-12-08,正常,PC,纯前端,已上线,否,
+K线解读功能 Demo,文轩,2026-01-04,正常,PC,纯前端,已上线,否,自己的idea->实现
+合约杠杆输入框清空问题,淑婷,2025-12-25,正常,PC,纯前端,已上线,否,
+登录设备管理H5-移除设备,淑婷,2026-01-15,正常,Web,纯前端,已上线,否,
+安全设置H5 logo优化,淑婷,2026-01-15,正常,Web,纯前端,已上线,否,
+自定义指标委托价格undefined,淑婷,2026-01-22,正常,PC,纯前端,已上线,否,
+自定义指标实盘方向显示问题,淑婷,2026-01-22,正常,PC,纯前端,已上线,否,
+作家申请入驻夜间模式字体,影影,2026-01-15,提前,Web,纯前端,已上线,否,
+投稿页面联系方式与封面图,影影,2026-01-15,正常,Web,纯前端,已上线,否,
+信号预警频率选项,影影,2026-01-15,正常,Android,前端+后端协助,已上线,是,
+画线工具设置窗口优化,思睿,2026-01-15,正常,PC,纯前端,提交开发分支至demo,否,
+画线管理会员弹窗优化,思睿,2026-01-15,正常,PC,纯前端,提交开发分支至demo,否,
+画线管理筛选优化,思睿,2026-01-15,正常,PC,纯前端,提交开发分支至demo,否,
+DCA/网格策略总览页,泉秀,2025/12/9,正常,PC,纯前端,已上线,否,原技术离职后改为产品 demo流程
+持仓量指标英文名称改为 OI,泉秀,2026-01-15,正常,Android,纯前端,已上线,否,
+持仓量指标英文名称改为 OI,泉秀,2026-01-15,正常,iOS,纯前端,已上线,否,`;
+
+        // 解析 CSV 数据
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] || '';
+                });
+                data.push(obj);
+            }
+            return data;
+        }
+
+        let allData = parseCSV(rawData);
+        let filteredData = [...allData];
+        let sortColumn = -1;
+        let sortDirection = 1;
+
+        // 格式化日期显示（将 2025-12-25 显示为 12.25）
+        function formatReleaseDate(dateStr) {
+            if (!dateStr) return '全部';
+            // 处理不同格式的日期：2025/12/9, 2025-12-25, 2026-01-15 等
+            // 先尝试标准化日期格式
+            let normalizedDate = dateStr.replace(/\//g, '-');
+            
+            // 尝试解析日期
+            const date = new Date(normalizedDate);
+            if (!isNaN(date.getTime())) {
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                return `${month}.${day}`;
+            }
+            
+            // 如果无法解析，尝试直接提取月份和日期（格式如 2025/12/9）
+            const match = dateStr.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+            if (match) {
+                return `${parseInt(match[2])}.${parseInt(match[3])}`;
+            }
+            
+            // 如果都不行，返回原值
+            return dateStr;
+        }
+
+        // 初始化发版日期筛选器
+        function initReleaseDateFilter() {
+            // 提取所有唯一的发版日期
+            const releaseDates = [...new Set(allData.map(d => d.发版日期))].filter(d => d).sort();
+            
+            const buttonsContainer = document.getElementById('releaseDateButtons');
+            
+            // 添加日期按钮
+            releaseDates.forEach(date => {
+                const button = document.createElement('button');
+                button.className = 'release-date-btn';
+                button.textContent = formatReleaseDate(date);
+                button.setAttribute('data-date', date);
+                button.addEventListener('click', () => selectReleaseDate(date));
+                buttonsContainer.appendChild(button);
+            });
+        }
+
+        // 选择发版日期
+        function selectReleaseDate(date) {
+            // 更新按钮状态
+            document.querySelectorAll('.release-date-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-date') === date) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // 应用筛选
+            applyFilters();
+        }
+
+        // 初始化筛选器选项
+        function initFilters() {
+            const owners = [...new Set(allData.map(d => d.负责人))];
+            const statuses = [...new Set(allData.map(d => d.当前状态))];
+            const platforms = [...new Set(allData.map(d => d.平台))];
+            const techs = [...new Set(allData.map(d => d.技术类型))];
+
+            populateSelect('filterOwner', owners);
+            populateSelect('filterStatus', statuses);
+            populateSelect('filterPlatform', platforms);
+            populateSelect('filterTech', techs);
+
+            document.getElementById('filterOwner').addEventListener('change', applyFilters);
+            document.getElementById('filterStatus').addEventListener('change', applyFilters);
+            document.getElementById('filterPlatform').addEventListener('change', applyFilters);
+            document.getElementById('filterTech').addEventListener('change', applyFilters);
+
+            // 初始化发版日期筛选器
+            initReleaseDateFilter();
+        }
+
+        function populateSelect(id, options) {
+            const select = document.getElementById(id);
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                select.appendChild(option);
+            });
+        }
+
+        // 搜索功能
+        function applySearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            // 获取发版日期筛选
+            const activeDateBtn = document.querySelector('.release-date-btn.active');
+            const releaseDate = activeDateBtn ? activeDateBtn.getAttribute('data-date') : '';
+            
+            const owner = document.getElementById('filterOwner').value;
+            const status = document.getElementById('filterStatus').value;
+            const platform = document.getElementById('filterPlatform').value;
+            const tech = document.getElementById('filterTech').value;
+
+            let data = allData.filter(item => {
+                return (!releaseDate || item.发版日期 === releaseDate) &&
+                       (!owner || item.负责人 === owner) &&
+                       (!status || item.当前状态 === status) &&
+                       (!platform || item.平台 === platform) &&
+                       (!tech || item.技术类型 === tech);
+            });
+
+            if (searchTerm) {
+                data = data.filter(item => {
+                    return Object.values(item).some(value => 
+                        value && value.toString().toLowerCase().includes(searchTerm)
+                    );
+                });
+            }
+
+            filteredData = data;
+            updateDashboard();
+        }
+
+        // 应用筛选
+        function applyFilters() {
+            applySearch();
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('filterOwner').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterPlatform').value = '';
+            document.getElementById('filterTech').value = '';
+            document.getElementById('searchInput').value = '';
+            
+            // 重置发版日期筛选
+            selectReleaseDate('');
+            
+            filteredData = [...allData];
+            updateDashboard();
+        }
+
+        // 排序表格
+        function sortTable(columnIndex) {
+            if (sortColumn === columnIndex) {
+                sortDirection *= -1;
+            } else {
+                sortColumn = columnIndex;
+                sortDirection = 1;
+            }
+
+            const headers = ['需求名称', '负责人', '发版日期', '发版类型', '平台', '技术类型', '当前状态', '是否涉及后端', '备注'];
+            const key = headers[columnIndex];
+
+            filteredData.sort((a, b) => {
+                const valA = a[key] || '';
+                const valB = b[key] || '';
+                return valA.localeCompare(valB, 'zh-CN') * sortDirection;
+            });
+
+            renderTable();
+        }
+
+        // 渲染表格
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.需求名称}</td>
+                    <td>${item.负责人}</td>
+                    <td>${item.发版日期}</td>
+                    <td>${item.发版类型}</td>
+                    <td><span class="platform-badge">${item.平台}</span></td>
+                    <td>${item.技术类型}</td>
+                    <td><span class="status-badge status-${item.当前状态}">${item.当前状态}</span></td>
+                    <td>${item.是否涉及后端}</td>
+                    <td>${item.备注 || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 更新 KPI
+        function updateKPI() {
+            const total = filteredData.length;
+            const online = filteredData.filter(d => d.当前状态 === '已上线').length;
+            const rate = total > 0 ? Math.round((online / total) * 100) : 0;
+            const backend = filteredData.filter(d => d.是否涉及后端 === '是').length;
+
+            document.getElementById('totalReqs').textContent = total;
+            document.getElementById('onlineReqs').textContent = online;
+            document.getElementById('onlineRate').textContent = rate + '%';
+            document.getElementById('backendReqs').textContent = backend;
+        }
+
+        // 更新图表
+        let statusChart, ownerChart, platformChart, techChart;
+
+        function updateCharts() {
+            // 莫兰迪绿色配色方案
+            const colors = ['#F6F0D7', '#C5D89D', '#9CAB84', '#89986D'];
+            const extendedColors = ['#F6F0D7', '#C5D89D', '#9CAB84', '#89986D', '#E0E5B6', '#7A855F'];
+
+            // 状态分布
+            const statusCount = {};
+            filteredData.forEach(d => {
+                statusCount[d.当前状态] = (statusCount[d.当前状态] || 0) + 1;
+            });
+
+            const statusValues = Object.values(statusCount);
+            const statusTotal = statusValues.reduce((a, b) => a + b, 0);
+            const statusLabels = Object.keys(statusCount).map((key, index) => {
+                const value = statusValues[index];
+                const percentage = statusTotal > 0 ? Math.round((value / statusTotal) * 100) : 0;
+                return `${key} (${percentage}%)`;
+            });
+
+            if (statusChart) statusChart.destroy();
+            statusChart = new Chart(document.getElementById('statusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{
+                        data: statusValues,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    height: 480,
+                    radius: '75%',
+                    cutout: '60%',
+                    plugins: {
+                        legend: { 
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#202123',
+                            titleFont: { family: "'Söhne', sans-serif" },
+                            bodyFont: { family: "'Söhne', sans-serif" },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return label.replace(/ \(\d+%\)/, '') + ': ' + value + ' (' + percentage + '%)';
+                                }
+                            }
+                        },
+                        datalabels: {
+                            color: function(context) {
+                                const index = context.dataIndex;
+                                return index === 0 ? '#333' : '#fff';
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 12,
+                                family: "'Söhne', sans-serif"
+                            },
+                            formatter: function(value, context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return percentage > 5 ? percentage + '%' : '';
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 负责人工作量
+            const ownerCount = {};
+            filteredData.forEach(d => {
+                ownerCount[d.负责人] = (ownerCount[d.负责人] || 0) + 1;
+            });
+
+            const ownerKeys = Object.keys(ownerCount);
+            const ownerValues = Object.values(ownerCount);
+            const ownerTotal = ownerValues.reduce((a, b) => a + b, 0);
+
+            // 为每个负责人分配不同深度的绿色
+            const ownerColors = [
+                '#9CAB84', '#89986D', '#7A855F', '#C5D89D', '#E0E5B6', '#F6F0D7'
+            ];
+            const ownerBackgroundColors = ownerKeys.map((key, index) => {
+                return ownerColors[index % ownerColors.length];
+            });
+
+            if (ownerChart) ownerChart.destroy();
+            ownerChart = new Chart(document.getElementById('ownerChart'), {
+                type: 'bar',
+                data: {
+                    labels: ownerKeys,
+                    datasets: [{
+                        label: '需求数量',
+                        data: ownerValues,
+                        backgroundColor: ownerBackgroundColors,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barThickness: 38
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    height: 480,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 20,
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#202123',
+                            titleFont: { family: "'Söhne', sans-serif", size: 14 },
+                            bodyFont: { family: "'Söhne', sans-serif", size: 13 },
+                            padding: 14,
+                            cornerRadius: 8,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    return `${value} 项`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { 
+                                stepSize: 1, 
+                                font: { family: "'Söhne', sans-serif", size: 10 },
+                                padding: 4
+                            },
+                            grid: { 
+                                display: false,
+                                drawBorder: false
+                            },
+                            border: { display: false }
+                        },
+                        x: {
+                            ticks: { 
+                                font: { family: "'Söhne', sans-serif", size: 13 },
+                                padding: 12
+                            },
+                            grid: { 
+                                display: false,
+                                drawBorder: false
+                            },
+                            border: { display: false }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            // 平台分布
+            const platformCount = {};
+            filteredData.forEach(d => {
+                platformCount[d.平台] = (platformCount[d.平台] || 0) + 1;
+            });
+
+            const platformValues = Object.values(platformCount);
+            const platformTotal = platformValues.reduce((a, b) => a + b, 0);
+            const platformLabels = Object.keys(platformCount).map((key, index) => {
+                const value = platformValues[index];
+                const percentage = platformTotal > 0 ? Math.round((value / platformTotal) * 100) : 0;
+                return `${key} (${percentage}%)`;
+            });
+
+            if (platformChart) platformChart.destroy();
+            platformChart = new Chart(document.getElementById('platformChart'), {
+                type: 'pie',
+                data: {
+                    labels: platformLabels,
+                    datasets: [{
+                        data: platformValues,
+                        backgroundColor: extendedColors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    height: 480,
+                    radius: '75%',
+                    plugins: {
+                        legend: { 
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#202123',
+                            titleFont: { family: "'Söhne', sans-serif" },
+                            bodyFont: { family: "'Söhne', sans-serif" },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return label.replace(/ \(\d+%\)/, '') + ': ' + value + ' (' + percentage + '%)';
+                                }
+                            }
+                        },
+                        datalabels: {
+                            color: function(context) {
+                                const index = context.dataIndex;
+                                return (index === 0 || index === 4) ? '#333' : '#fff';
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 12,
+                                family: "'Söhne', sans-serif"
+                            },
+                            formatter: function(value, context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return percentage > 5 ? percentage + '%' : '';
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 技术类型分布
+            const techCount = {};
+            filteredData.forEach(d => {
+                techCount[d.技术类型] = (techCount[d.技术类型] || 0) + 1;
+            });
+
+            const techKeys = Object.keys(techCount);
+            const techValues = Object.values(techCount);
+            const techTotal = techValues.reduce((a, b) => a + b, 0);
+
+            // 创建不同颜色的数组（使用 Morandi 色系）
+            const techColors = [
+                '#C5D89D', // 纯前端 - 浅绿色
+                '#9CAB84', // 前端+后端协助+数据统计 - 橄榄绿
+                '#E0E5B6', // 前端+后端 - 浅黄绿
+                '#89986D'  // 前端+后端协助 - 深绿
+            ];
+
+            // 为每个柱子分配颜色
+            const techBackgroundColors = techKeys.map((key, index) => {
+                return techColors[index % techColors.length];
+            });
+
+            if (techChart) techChart.destroy();
+            techChart = new Chart(document.getElementById('techChart'), {
+                type: 'bar',
+                data: {
+                    labels: techKeys,
+                    datasets: [{
+                        label: '数量',
+                        data: techValues,
+                        backgroundColor: techBackgroundColors,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barThickness: 38
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    height: 480,
+                    indexAxis: 'y',
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 20,
+                            top: 10,
+                            bottom: 5
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#202123',
+                            titleFont: { family: "'Söhne', sans-serif", size: 14 },
+                            bodyFont: { family: "'Söhne', sans-serif", size: 13 },
+                            padding: 14,
+                            cornerRadius: 8,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.x;
+                                    return `${value} 项`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true, 
+                            ticks: { 
+                                stepSize: 2, 
+                                font: { family: "'Söhne', sans-serif", size: 10 },
+                                maxRotation: 0,
+                                minRotation: 0,
+                                padding: 4
+                            },
+                            grid: { 
+                                display: false,
+                                drawBorder: false
+                            },
+                            border: { display: false }
+                        },
+                        y: {
+                            ticks: { 
+                                font: { family: "'Söhne', sans-serif", size: 13 },
+                                padding: 12
+                            },
+                            grid: { 
+                                display: false,
+                                drawBorder: false
+                            },
+                            border: { display: false }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            // 确保默认显示正确的图表，并隐藏其他图表
+            const statusCanvas = document.getElementById('statusChart');
+            const platformCanvas = document.getElementById('platformChart');
+            const ownerCanvas = document.getElementById('ownerChart');
+            const techCanvas = document.getElementById('techChart');
+
+            // 初始化时，确保所有图表都有正确的类
+            // 统一容器：默认只显示状态分布
+            statusCanvas.classList.add('active');
+            platformCanvas.classList.remove('active');
+            ownerCanvas.classList.remove('active');
+            techCanvas.classList.remove('active');
+            
+            // 设置默认激活的 Tab
+            document.querySelectorAll('.chart-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector('.chart-tab[data-chart="status"]').classList.add('active');
+            
+            // 初始化右侧信息面板
+            updateChartInfo('status');
+        }
+
+        // Tab 切换功能 - 统一处理4个图表
+        function initChartTabs() {
+            // 所有 Tab 切换
+            document.querySelectorAll('.chart-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const chartType = this.getAttribute('data-chart');
+                    
+                    // 更新所有 Tab 状态
+                    const container = this.closest('.chart-container');
+                    container.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 隐藏所有图表
+                    const statusCanvas = document.getElementById('statusChart');
+                    const platformCanvas = document.getElementById('platformChart');
+                    const ownerCanvas = document.getElementById('ownerChart');
+                    const techCanvas = document.getElementById('techChart');
+                    
+                    statusCanvas.classList.remove('active');
+                    platformCanvas.classList.remove('active');
+                    ownerCanvas.classList.remove('active');
+                    techCanvas.classList.remove('active');
+                    
+                    // 显示选中的图表
+                    let activeChart = null;
+                    if (chartType === 'status') {
+                        statusCanvas.classList.add('active');
+                        activeChart = statusChart;
+                    } else if (chartType === 'platform') {
+                        platformCanvas.classList.add('active');
+                        activeChart = platformChart;
+                    } else if (chartType === 'owner') {
+                        ownerCanvas.classList.add('active');
+                        activeChart = ownerChart;
+                    } else if (chartType === 'tech') {
+                        techCanvas.classList.add('active');
+                        activeChart = techChart;
+                    }
+                    
+                    // 更新右侧信息面板
+                    updateChartInfo(chartType);
+                    
+                    // 使用 requestAnimationFrame 确保 DOM 更新后再调整图表大小
+                    requestAnimationFrame(() => {
+                        if (activeChart) {
+                            activeChart.resize();
+                        }
+                    });
+                });
+            });
+        }
+
+        // 更新右侧信息面板
+        function updateChartInfo(chartType) {
+            const infoTotal = document.getElementById('infoTotal');
+            const infoTop = document.getElementById('infoTop');
+            const infoInsight = document.getElementById('infoInsight');
+            const customLegend = document.getElementById('customLegend');
+
+            if (chartType === 'status') {
+                // 状态分布信息
+                const statusCount = {};
+                filteredData.forEach(d => {
+                    statusCount[d.当前状态] = (statusCount[d.当前状态] || 0) + 1;
+                });
+                const total = filteredData.length;
+                const sorted = Object.entries(statusCount).sort((a, b) => b[1] - a[1]);
+                const topStatus = sorted[0];
+                const topPercentage = Math.round((topStatus[1] / total) * 100);
+
+                infoTotal.textContent = total;
+                infoTop.textContent = `${topStatus[0]} (${topPercentage}%)`;
+                
+                const onlineCount = statusCount['已上线'] || 0;
+                const onlineRate = Math.round((onlineCount / total) * 100);
+                infoInsight.textContent = `当前上线率为 ${onlineRate}%，${onlineRate >= 80 ? '表现优秀' : onlineRate >= 60 ? '表现良好' : '需要关注'}。`;
+
+                // 自定义图例
+                customLegend.innerHTML = sorted.map(([label, count]) => {
+                    const percentage = Math.round((count / total) * 100);
+                    const colors = ['#F6F0D7', '#C5D89D', '#9CAB84', '#89986D'];
+                    const colorIndex = sorted.findIndex(([l]) => l === label);
+                    return `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: ${colors[colorIndex % colors.length]}"></div>
+                            <div class="legend-label">${label}</div>
+                            <div class="legend-value">${count} (${percentage}%)</div>
+                        </div>
+                    `;
+                }).join('');
+
+            } else if (chartType === 'platform') {
+                // 平台分布信息
+                const platformCount = {};
+                filteredData.forEach(d => {
+                    platformCount[d.平台] = (platformCount[d.平台] || 0) + 1;
+                });
+                const total = filteredData.length;
+                const sorted = Object.entries(platformCount).sort((a, b) => b[1] - a[1]);
+                const topPlatform = sorted[0];
+                const topPercentage = Math.round((topPlatform[1] / total) * 100);
+
+                infoTotal.textContent = total;
+                infoTop.textContent = `${topPlatform[0]} (${topPercentage}%)`;
+                
+                const pcCount = platformCount['PC'] || 0;
+                const pcRate = Math.round((pcCount / total) * 100);
+                infoInsight.textContent = `PC 端需求占比 ${pcRate}%，${pcRate >= 50 ? '是主要平台' : '与其他平台分布相对均衡'}。`;
+
+                // 自定义图例
+                const extendedColors = ['#F6F0D7', '#C5D89D', '#9CAB84', '#89986D', '#E0E5B6', '#7A855F'];
+                customLegend.innerHTML = sorted.map(([label, count], index) => {
+                    const percentage = Math.round((count / total) * 100);
+                    return `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: ${extendedColors[index % extendedColors.length]}"></div>
+                            <div class="legend-label">${label}</div>
+                            <div class="legend-value">${count} (${percentage}%)</div>
+                        </div>
+                    `;
+                }).join('');
+
+            } else if (chartType === 'owner') {
+                // 负责人工作量信息
+                const ownerCount = {};
+                filteredData.forEach(d => {
+                    ownerCount[d.负责人] = (ownerCount[d.负责人] || 0) + 1;
+                });
+                const sorted = Object.entries(ownerCount).sort((a, b) => b[1] - a[1]);
+                const topOwner = sorted[0];
+                const avgWorkload = Math.round(Object.values(ownerCount).reduce((a, b) => a + b, 0) / Object.keys(ownerCount).length);
+
+                infoTotal.textContent = Object.keys(ownerCount).length;
+                infoTop.textContent = `${topOwner[0]} (${topOwner[1]} 项)`;
+                
+                const maxWorkload = Math.max(...Object.values(ownerCount));
+                const minWorkload = Math.min(...Object.values(ownerCount));
+                infoInsight.textContent = `工作量分布${maxWorkload - minWorkload <= 3 ? '相对均衡' : '存在差异'}，最高 ${maxWorkload} 项，最低 ${minWorkload} 项，平均 ${avgWorkload} 项。`;
+
+                // 自定义图例
+                customLegend.innerHTML = sorted.map(([label, count]) => {
+                    return `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #9CAB84"></div>
+                            <div class="legend-label">${label}</div>
+                            <div class="legend-value">${count} 项</div>
+                        </div>
+                    `;
+                }).join('');
+
+            } else if (chartType === 'tech') {
+                // 技术类型分布信息
+                const techCount = {};
+                filteredData.forEach(d => {
+                    techCount[d.技术类型] = (techCount[d.技术类型] || 0) + 1;
+                });
+                const total = filteredData.length;
+                const sorted = Object.entries(techCount).sort((a, b) => b[1] - a[1]);
+                const topTech = sorted[0];
+                const topPercentage = Math.round((topTech[1] / total) * 100);
+
+                infoTotal.textContent = total;
+                infoTop.textContent = `${topTech[0]} (${topPercentage}%)`;
+                
+                const pureFrontendCount = techCount['纯前端'] || 0;
+                const pureFrontendRate = Math.round((pureFrontendCount / total) * 100);
+                const backendInvolved = total - pureFrontendCount;
+                const backendRate = Math.round((backendInvolved / total) * 100);
+                infoInsight.textContent = `纯前端需求占比 ${pureFrontendRate}%，${backendRate > 0 ? `涉及后端协作的需求占 ${backendRate}%` : '无后端协作需求'}。`;
+
+                // 自定义图例
+                customLegend.innerHTML = sorted.map(([label, count]) => {
+                    const percentage = Math.round((count / total) * 100);
+                    return `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #C5D89D"></div>
+                            <div class="legend-label">${label}</div>
+                            <div class="legend-value">${count} (${percentage}%)</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // 更新整个 Dashboard
+        function updateDashboard() {
+            updateKPI();
+            updateCharts();
+            renderTable();
+            
+            // 更新右侧信息面板（根据当前激活的图表）
+            const activeTab = document.querySelector('.chart-tab.active');
+            if (activeTab) {
+                const chartType = activeTab.getAttribute('data-chart');
+                updateChartInfo(chartType);
+            }
+        }
+
+        // 初始化
+        initFilters();
+        initChartTabs();
+        updateDashboard();
+    </script>
+</body>
+</html>
+
